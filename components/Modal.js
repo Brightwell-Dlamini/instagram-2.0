@@ -1,15 +1,53 @@
 import React, { Fragment, useRef, useState } from 'react'
-import { useRecoilState } from 'recoil'
+import { Snapshot, useRecoilState } from 'recoil'
 import { modalState } from '../atoms/modalAtoms'
 import { Dialog, Transition } from '@headlessui/react'
 import { CameraIcon } from '@heroicons/react/outline'
+import { db, storage } from '../firebase'
+import {
+  addDoc,
+  collection,
+  doc,
+  serverTimestamp,
+  updateDoc,
+} from 'firebase/firestore'
+import { useSession } from 'next-auth/react'
+import { getDownloadURL, ref, uploadString } from 'firebase/storage'
 
 function Modal() {
+  const { data: session } = useSession()
   const [open, setOpen] = useRecoilState(modalState)
   const filePickerRef = useRef(null)
   const captionRef = useRef(null)
   const [loading, setLoading] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
+
+  const uploadPost = async () => {
+    if (loading) return
+    setLoading(true)
+    //create a psot and add to firestore
+    //get the post id for the newly created post
+    //upload the image to firebase storage eith the post id
+    //get a download url from firebase storage and upload to original post with image
+    const docRef = await addDoc(collection(db, 'posts'), {
+      username: session.user.username,
+      caption: captionRef.current.value,
+      profileImg: session.user.image,
+      timestamp: serverTimestamp(),
+    })
+    console.log('New doc id', docRef.id)
+    const imageRef = ref(storage, `posts/${docRef.id}/image`)
+
+    await uploadString(imageRef, selectedFile, 'data_url').then(
+      async (snapshot) => {
+        const downloadURL = await getDownloadURL(imageRef)
+        await updateDoc(doc(db, 'posts', docRef.id), { image: downloadURL })
+      }
+    )
+    setOpen(false)
+    setLoading(false)
+    setSelectedFile(null)
+  }
 
   const addImageToPost = (e) => {
     const reader = new FileReader()
@@ -20,14 +58,7 @@ function Modal() {
       setSelectedFile(readerEvent.target.result)
     }
   }
-  const uploadPost = async () => {
-    if (loading) return
-    setLoading(true)
-    //create a psot and add to firestore
-    //get the post id for the newly created post
-    //upload the image to firebase storage eith the post id
-    //get a download url from firebase storage and upload to original post
-  }
+
   return (
     <Transition.Root show={open} as={Fragment}>
       <Dialog
@@ -110,12 +141,11 @@ function Modal() {
                 <div className="mt-5 sm:mt-6">
                   <button
                     type="button"
-                    // disabled={!selectedFile}
+                    disabled={!selectedFile}
                     className="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 hover:disabled:bg-gray-300 sm:text-sm"
                     onClick={uploadPost}
                   >
-                    {/* {loading ? 'Uploading...' : 'Upload post'} */}
-                    Upload Post
+                    {loading ? 'Uploading...' : 'Upload post'}
                   </button>
                 </div>
               </div>
