@@ -1,30 +1,30 @@
-import React, { Fragment, useRef, useState } from 'react'
-import { Snapshot, useRecoilState } from 'recoil'
-import { modalState } from '../atoms/modalAtoms'
-import { Dialog, Transition } from '@headlessui/react'
-import { CameraIcon } from '@heroicons/react/outline'
-import { db, storage } from '../firebase'
+import React, { Fragment, useRef, useState } from 'react';
+import { Snapshot, useRecoilState } from 'recoil';
+import { modalState } from '../atoms/modalAtoms';
+import { Dialog, Transition } from '@headlessui/react';
+import { CameraIcon } from '@heroicons/react/outline';
+import { db, storage } from '../firebase';
 import {
   addDoc,
   collection,
   doc,
   serverTimestamp,
   updateDoc,
-} from 'firebase/firestore'
-import { useSession } from 'next-auth/react'
-import { getDownloadURL, ref, uploadString } from 'firebase/storage'
+} from 'firebase/firestore';
+import { useSession } from 'next-auth/react';
+import { getDownloadURL, ref, uploadString } from 'firebase/storage';
 
 function Modal() {
-  const { data: session } = useSession()
-  const [open, setOpen] = useRecoilState(modalState)
-  const filePickerRef = useRef(null)
-  const captionRef = useRef(null)
-  const [loading, setLoading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
+  const { data: session } = useSession();
+  const [open, setOpen] = useRecoilState(modalState);
+  const filePickerRef = useRef(null);
+  const captionRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const uploadPost = async () => {
-    if (loading) return
-    setLoading(true)
+    if (loading) return;
+    setLoading(true);
     //create a psot and add to firestore
     //get the post id for the newly created post
     //upload the image to firebase storage eith the post id
@@ -34,30 +34,30 @@ function Modal() {
       caption: captionRef.current.value,
       profileImg: session.user.image,
       timestamp: serverTimestamp(),
-    })
-    console.log('New doc id', docRef.id)
-    const imageRef = ref(storage, `posts/${docRef.id}/image`)
+    });
+
+    const imageRef = ref(storage, `posts/${docRef.id}/image`);
 
     await uploadString(imageRef, selectedFile, 'data_url').then(
       async (snapshot) => {
-        const downloadURL = await getDownloadURL(imageRef)
-        await updateDoc(doc(db, 'posts', docRef.id), { image: downloadURL })
+        const downloadURL = await getDownloadURL(imageRef);
+        await updateDoc(doc(db, 'posts', docRef.id), { image: downloadURL });
       }
-    )
-    setOpen(false)
-    setLoading(false)
-    setSelectedFile(null)
-  }
+    );
+    setOpen(false);
+    setLoading(false);
+    setSelectedFile(null);
+  };
 
   const addImageToPost = (e) => {
-    const reader = new FileReader()
+    const reader = new FileReader();
     if (e.target.files[0]) {
-      reader.readAsDataURL(e.target.files[0])
+      reader.readAsDataURL(e.target.files[0]);
     }
     reader.onload = (readerEvent) => {
-      setSelectedFile(readerEvent.target.result)
-    }
-  }
+      setSelectedFile(readerEvent.target.result);
+    };
+  };
 
   return (
     <Transition.Root show={open} as={Fragment}>
@@ -154,7 +154,7 @@ function Modal() {
         </div>
       </Dialog>
     </Transition.Root>
-  )
+  );
 }
 
-export default Modal
+export default Modal;
